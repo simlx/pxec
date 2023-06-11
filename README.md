@@ -1,1 +1,4 @@
 # pxec
+
+# Building
+make
