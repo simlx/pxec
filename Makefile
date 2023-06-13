@@ -1,2 +1,2 @@
 build:
-	gcc main.c -o pxec
+	gcc main.c -o px
