@@ -10,7 +10,7 @@ start x.exe
 * rm
 * edit
 * exit
-* <alias name>
+* \<alias name\>
 
 # Building
 make
