@@ -20,6 +20,7 @@ Currently only usable on Windows.
 * rm
 * edit
 * exit
+* goto
 * \<alias name\>
 
 # License
