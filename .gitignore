@@ -2,3 +2,9 @@
 map.pxec
 *.pxec
 *.exe
+
+
+# Added by cargo
+
+/target
+Cargo.lock
