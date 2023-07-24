@@ -1,8 +1,6 @@
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::path::Path;
 use std::fs::read_to_string;
 use std::env;
+
 /*
 * TODO:
 *
@@ -33,7 +31,7 @@ fn main() {
     let lines = load();
 
     // print test file content 
-        println!("example content: ");
+    println!("example content: ");
     for line in lines {
         println!("{}", line);
     }
@@ -45,8 +43,6 @@ fn execute(arg: String) {
 }
 
 fn edit_mapfile() {}
-
-fn save() {}
 
 fn load() -> Vec<String> {
     read_lines("test.test")
