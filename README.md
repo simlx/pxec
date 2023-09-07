@@ -5,7 +5,7 @@ Execute programs through custom aliases.
 make
 
 # Platforms
-Currently only usable on Windows.
+Windows, Linux
 
 # How to use
 | input            | example          | explanation                                      |   |     |
