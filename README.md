@@ -1,11 +1,11 @@
 # pxec
-Run applications, commands and links through aliases
+Execute **applications**, **commands** and **links** through aliases
 
 # Building
-make
+``make``
 
 # Platforms
-Windows, Linux
+``Windows``  ``Linux``
 
 # How to use
 | input            | example          | explanation                                      |   |     |
