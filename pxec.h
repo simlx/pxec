@@ -4,6 +4,7 @@
 // beep package required
 void beep(int freq, int len);
 void print_version();
+void read_input(char* in);
 void remove_newline(char* line);
 void clear_screen();
 void save_to_file();
