@@ -7,6 +7,7 @@ void print_version();
 void remove_newline(char* line);
 void clear_screen();
 void save_to_file();
+int check_cmd_exists(char* cmd);
 void run_cmd(char* in, char* argstr);
 void remove_entry(char* in);
 void add_entry(char* in, int* entry_count);
