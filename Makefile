@@ -1,2 +1,2 @@
 build:
-	gcc main.c -o tx
+	gcc main.c -o px
