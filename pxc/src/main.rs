@@ -85,6 +85,7 @@ fn main() {
 				}
 
 					add( MapEntry {name: entry_name.to_string(),category: entry_category.to_string(),filehash: char_sequence}, &mut entries);
+					edit(&entry_name, entries);
 				},
 			"e" | "edit" => edit( &args.next().unwrap(), entries),
 			"r" | "rm" | "remove" => {
@@ -127,13 +128,28 @@ fn main() {
 							Command::new("chmod")
 							.arg("777")
 							.arg(&cmdpath)
-							.spawn()
+							.status()
 							.expect("failed to execute process");
+
+							let mut cmdargs = "".to_owned();
+
+							loop {
+								match args.next() {
+									Some(carg) => {
+										cmdargs.push_str(&carg.to_owned());
+										cmdargs.push_str(" ");
+										
+									},
+									None => {break;}
+								};
+							}
+
+							println!("carg: {}", cmdargs);
 
 							// run
 							Command::new("sh")
 							.arg("-c")
-							.arg(cmdpath)
+							.arg(cmdpath + " " + &cmdargs)
 							.spawn()
 							.expect("failed to execute process");
 						},
