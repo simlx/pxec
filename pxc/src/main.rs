@@ -7,6 +7,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::io::{BufWriter, Write};
 use rand::{distributions::Alphanumeric, Rng};
+use std::process::Command;
 
 struct MapEntry {
 	name: String,
@@ -16,12 +17,8 @@ struct MapEntry {
 
 fn help() {
 	println!("ls (list)");
-	println!("list (list)");
-	println!("q (quit)");
 	println!("a (add)");
-	println!("add (add)");
 	println!("e (edit)");
-	println!("edit (edit)");
 	println!("r (remove)");
 	println!("init (create map.pxc)");
 	println!("pkg");
@@ -64,33 +61,33 @@ fn main() {
 	if let Some(arg) = args.next() {
 		match &arg[..] {
 			"h" => help(),
-				"a" | "add" => { // pxc add cmd category(optional)
+			"a" | "add" => { // pxc add cmd category(optional)
 
-					let mut entry_name = "".to_owned();
-					let mut entry_category= "".to_owned();
+				let mut entry_name = "".to_owned();
+				let mut entry_category= "".to_owned();
 
-					if let Some(arg1) = args.next() {
-						entry_name.push_str(&arg1);
-					} else {
-						println!("[add] no name supplied, exiting.");
-						return;
-					}
-					if let Some(arg1) = args.next() {
-						entry_category.push_str(&arg1);
-					} else {
-						println!("[add] adding {} with default category", entry_name);
-					}
+				if let Some(arg1) = args.next() {
+					entry_name.push_str(&arg1);
+				} else {
+					println!("[add] no name supplied, exiting.");
+					return;
+				}
+				if let Some(arg1) = args.next() {
+					entry_category.push_str(&arg1);
+				} else {
+					println!("[add] adding {} with default category", entry_name);
+				}
 					
-					let mut char_sequence = gen_char_sequence();
-					while check_sequence_exists(&char_sequence, &mut entries) {
-						println!("filehash {} already existed!, generating again..", &char_sequence);
-						char_sequence = gen_char_sequence();
-					}
+				let mut char_sequence = gen_char_sequence();
+				while check_sequence_exists(&char_sequence, &mut entries) {
+					println!("filehash {} already existed!, generating again..", &char_sequence);
+					char_sequence = gen_char_sequence();
+				}
 
 					add( MapEntry {name: entry_name.to_string(),category: entry_category.to_string(),filehash: char_sequence}, &mut entries);
 				},
-				"e" | "edit" => edit(),
-				"r" | "rm" | "remove" => {
+			"e" | "edit" => edit( &args.next().unwrap(), entries),
+			"r" | "rm" | "remove" => {
 					let mut entry_name = "".to_owned();
 					if let Some(arg1) = args.next() {
 						entry_name.push_str(&arg1);
@@ -100,12 +97,12 @@ fn main() {
 					}
 					remove(entry_name, &mut entries);
 				},
-				"ls" | "list" => list(&entries), // pxc ls category(optional)
-				"init" => match init() {
+			"ls" | "list" => list(&entries), // pxc ls category(optional)
+			"init" => match init() {
 					Ok(_) => {},
 					Err(e) => {println!("Errored: {}", e)}
 				},
-				"pkg" => {
+			"pkg" => {
 					if let Some(arg1) = args.next() {
 						match &arg1[..] {
 							"install" | "in" | "i" => println!("pkg not yet implemented"),
@@ -116,11 +113,32 @@ fn main() {
 						println!("[pkg] specify install or remove");
 					}
 				},
-				_ => {
+			_ => {
 					// run cmd
+					let opt_entry = get_entry_by_name(&arg, entries);
 					
+					match opt_entry {
+						Some(ent) => {
+							println!("running command '{}', filehash: {}", arg,  ent.filehash);
+							let cmdpath = get_pxc_path().to_string() + "/cmd/" + &ent.filehash;
+							println!("cmd path: '{}'", cmdpath);
 
-					println!("arg not found!");
+							// set permission
+							Command::new("chmod")
+							.arg("777")
+							.arg(&cmdpath)
+							.spawn()
+							.expect("failed to execute process");
+
+							// run
+							Command::new("sh")
+							.arg("-c")
+							.arg(cmdpath)
+							.spawn()
+							.expect("failed to execute process");
+						},
+						None  => println!("command '{}' not found", arg)
+					};
 				}
 		}
 	} else {
@@ -182,6 +200,16 @@ fn check_entry_exists(entry_name: &str, entries: &Vec<MapEntry>) -> bool {
 	return false;
 }
 
+fn get_entry_by_name(entry_name: &str, entries: Vec<MapEntry>) -> Option<MapEntry> {
+	for entry in entries {
+		if entry.name == entry_name {
+			return Some(entry);
+		}
+	}
+	return None;
+}
+
+
 fn add(mut new_entry: MapEntry, entries: &mut Vec<MapEntry>) {
 	if check_entry_exists(&new_entry.name, entries) {
 		println!("[add] map entry with this name already exists!");
@@ -193,6 +221,21 @@ fn add(mut new_entry: MapEntry, entries: &mut Vec<MapEntry>) {
 
 	entries.push(new_entry);
 	save_map(entries);
+}
+
+fn get_pxc_path() -> String {
+	let mut map_path = "".to_owned();
+	let mut homedir: String = "".to_owned();
+	homedir.to_owned();
+
+	match home::home_dir() {
+		Some(path) if !path.as_os_str().is_empty() => homedir.push_str(path.as_os_str().to_str().unwrap()),
+			_ => println!("Unable to get your home dir!"),
+	}
+	map_path.push_str(&homedir);
+	map_path.push_str("/.pxc");
+
+	return map_path;
 }
 
 fn save_map(entries: &Vec<MapEntry>) {
@@ -251,8 +294,20 @@ fn save_map(entries: &Vec<MapEntry>) {
 
 }
 
-fn edit() {
+fn edit(mut entry_name: &str, entries: Vec<MapEntry>) {
+	match get_entry_by_name(&entry_name, entries) {
+		Some(ent) => {
+			println!("[edit] editing command '{}', filehash: {}", entry_name,  ent.filehash);
+			let cmdpath = get_pxc_path().to_string() + "/cmd/" + &ent.filehash;
+			println!("cmd path: '{}'", cmdpath);
 
+			Command::new("vim")
+			.arg(cmdpath)
+			.status()
+			.expect("failed to execute process");
+		},
+		None  => println!("command '{}' not found", entry_name)
+	};
 }
 
 fn list(entries: &Vec<MapEntry>) {
