@@ -62,7 +62,7 @@ fn main() {
 	if let Some(arg) = args.next() {
 		match &arg[..] {
 			"h" => help(),
-			"a" | "add" => { // pxc add cmd category(optional)
+			"a" | "add" => {
 
 				let mut entry_name = "".to_owned();
 				let mut entry_category= "".to_owned();
@@ -100,10 +100,6 @@ fn main() {
 					remove(entry_name, &mut entries);
 				},
 			"ls" | "list" => list(&entries), // pxc ls category(optional)
-			"init" => match init() {
-					Ok(_) => {},
-					Err(e) => {println!("Errored: {}", e)}
-				},
 			"pkg" => {
 					if let Some(arg1) = args.next() {
 						match &arg1[..] {
@@ -183,6 +179,10 @@ fn read_map_file(map: &str) -> Vec<MapEntry> {
 		}
 	} else {
 		println!("pxc not initialized!");
+		match init() {
+			Ok(_) => {},
+			Err(e) => {println!("Could not initialize!: {}", e)}
+		}
 	}
 
 	return result1;
