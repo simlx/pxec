@@ -6,5 +6,5 @@ map.pxec
 
 # Added by cargo
 
-/target
+/pxc/target/*
 Cargo.lock
