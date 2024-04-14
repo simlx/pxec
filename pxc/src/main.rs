@@ -16,14 +16,15 @@ struct MapEntry {
 }
 
 fn help() {
-	println!("ls (list)");
-	println!("a (add)");
-	println!("e (edit)");
-	println!("r (remove)");
-	println!("init (create map.pxc)");
-	println!("pkg");
-	println!("   install <pkg>");
-	println!("   remove <pkg>");
+	println!("pxc commands:");
+	println!("  ls (list)");
+	println!("  a (add)");
+	println!("  e (edit)");
+	println!("  r (remove)");
+	println!("  init (create map.pxc)");
+	println!("  pkg");
+	println!("    install <pkg>");
+	println!("    remove <pkg>");
 }
 
 fn gen_char_sequence() -> String {
@@ -165,16 +166,9 @@ fn main() {
 fn read_map_file(map: &str) -> Vec<MapEntry> {
 
 	let mut result1: Vec<MapEntry> = Vec::new();
-	let mut path = Path::new("");
 	let mut map_file = home::home_dir().unwrap().as_os_str().to_str().unwrap().to_owned();
 	map_file.push_str("/.pxc/map/");
 	map_file.push_str(map);
-
-	if cfg!(windows) {
-		// windows todo
-	} else if cfg!(unix) {
-		path = Path::new(&map_file);
-	}
 
 	if let Ok(result) = read_lines(map_file) {
 		for line in result.flatten() {
@@ -188,7 +182,7 @@ fn read_map_file(map: &str) -> Vec<MapEntry> {
 			);
 		}
 	} else {
-		println!("pxc not initialized");
+		println!("pxc not initialized!");
 	}
 
 	return result1;
@@ -269,17 +263,17 @@ fn save_map(entries: &Vec<MapEntry>) {
 
 	// pxc directory: root pxec directory
 	match fs::create_dir_all(homedir.clone() + "/.pxc") {
-		Ok(dir) => {},
+		Ok(()) => {},
 		Err(dir) => {println!("error when creating dir {}", dir)}
 	}
 	// map directory: stores the mapping of command to script
 	match fs::create_dir_all(homedir.clone() + "/.pxc/map/"){
-		Ok(dir) => {},
+		Ok(()) => {},
 		Err(dir) => {println!("error when creating dir {}", dir)}
 	}
 	// commands directory: stores all script files
 	match fs::create_dir_all(homedir.clone() + "/.pxc/cmd/"){
-		Ok(dir) => {},
+		Ok(()) => {},
 		Err(dir) => {println!("error when creating dir {}", dir)}
 	}
 
@@ -328,7 +322,7 @@ fn edit(mut entry_name: &str, entries: Vec<MapEntry>) {
 
 fn list(entries: &Vec<MapEntry>) {
 	for entry in entries.iter() {
-		println!("[{} {} {}]",entry.name,entry.category,entry.filehash);
+		println!("[{}  ||  {}  ||  {}]",entry.name,entry.category,entry.filehash);
 	}
 }
 
@@ -359,17 +353,17 @@ fn init() -> std::io::Result<()> {
 
 		// pxc directory: root pxec directory
 		match fs::create_dir_all(homedir.clone() + "/.pxc"){
-			Ok(dir) => {},
+			Ok(()) => {},
 			Err(dir) => {println!("error when creating dir {}", dir)}
 		}
 		// map directory: stores the mapping of command to script
 		match fs::create_dir_all(homedir.clone() + "/.pxc/map/"){
-			Ok(dir) => {},
+			Ok(()) => {},
 			Err(dir) => {println!("error when creating dir {}", dir)}
 		}
 		// commands directory: stores all script files
 		match fs::create_dir_all(homedir.clone() + "/.pxc/cmd/"){
-			Ok(dir) => {},
+			Ok(()) => {},
 			Err(dir) => {println!("error when creating dir {}", dir)}
 		}
 
