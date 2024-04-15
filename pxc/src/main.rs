@@ -162,9 +162,7 @@ fn main() {
 fn read_map_file(map: &str) -> Vec<MapEntry> {
 
 	let mut result1: Vec<MapEntry> = Vec::new();
-	let mut map_file = home::home_dir().unwrap().as_os_str().to_str().unwrap().to_owned();
-	map_file.push_str("/.pxc/map/");
-	map_file.push_str(map);
+	let map_file = get_pxc_path() + "/map/pxc";
 
 	if let Ok(result) = read_lines(map_file) {
 		for line in result.flatten() {
@@ -234,77 +232,37 @@ fn add(mut new_entry: MapEntry, entries: &mut Vec<MapEntry>) {
 }
 
 fn get_pxc_path() -> String {
-	let mut map_path = "".to_owned();
-	let mut homedir: String = "".to_owned();
-	homedir.to_owned();
-
 	match home::home_dir() {
-		Some(path) if !path.as_os_str().is_empty() => homedir.push_str(path.as_os_str().to_str().unwrap()),
-			_ => println!("Unable to get your home dir!"),
+		Some(path) if !path.as_os_str().is_empty() => return  path.as_os_str().to_str().unwrap().to_string() + "/.pxc",
+			_ => { 
+				println!("Unable to get pxc path!");
+				return "".to_string(); 
+			}
 	}
-	map_path.push_str(&homedir);
-	map_path.push_str("/.pxc");
-
-	return map_path;
 }
 
 fn save_map(entries: &Vec<MapEntry>) {
-
 	if !cfg!(unix) {return; }
 
-	let mut newfilepath = "".to_owned();
-	let mut homedir: String = "".to_owned();
-	homedir.to_owned();
-
-	match home::home_dir() {
-		Some(path) if !path.as_os_str().is_empty() => homedir.push_str(path.as_os_str().to_str().unwrap()),
-			_ => println!("Unable to get your home dir!"),
-	}
-
-	// pxc directory: root pxec directory
-	match fs::create_dir_all(homedir.clone() + "/.pxc") {
-		Ok(()) => {},
-		Err(dir) => {println!("error when creating dir {}", dir)}
-	}
-	// map directory: stores the mapping of command to script
-	match fs::create_dir_all(homedir.clone() + "/.pxc/map/"){
-		Ok(()) => {},
-		Err(dir) => {println!("error when creating dir {}", dir)}
-	}
-	// commands directory: stores all script files
-	match fs::create_dir_all(homedir.clone() + "/.pxc/cmd/"){
-		Ok(()) => {},
-		Err(dir) => {println!("error when creating dir {}", dir)}
-	}
-
-	newfilepath.push_str(&homedir);
-	newfilepath.push_str("/.pxc/map/pxc");
+	let newfilepath = get_pxc_path() + "/map/pxc";
 
 	if !Path::new(&newfilepath).exists() {
 		println!("[save] map file doesn't exist!");
 		return;
 	}
 
-	println!("path {}", newfilepath);
-
-	let path = newfilepath;
-    let f = File::create(&path).expect("unable to create file");
-    let mut f = BufWriter::new(f);
+    let file_buffer = File::create(&newfilepath).expect("unable to create file");
+    let mut file_buffer = BufWriter::new(file_buffer);
 
     for entry in entries {
-
 		let entry_line = "".to_owned() + &entry.name + ";" + &entry.category + ";" + &entry.filehash;
-
-		println!("ok, writing {} to file {}", entry_line, &path);
-
-        write!(f, "{}\n", entry_line).expect("unable to write");
+        write!(file_buffer, "{}\n", entry_line).expect("unable to write");
     }
 
 	println!("[save] file saved!");
-
 }
 
-fn edit(mut entry_name: &str, entries: Vec<MapEntry>) {
+fn edit(entry_name: &str, entries: Vec<MapEntry>) {
 	match get_entry_by_name(&entry_name, entries) {
 		Some(ent) => {
 			println!("[edit] editing command '{}', filehash: {}", entry_name,  ent.filehash);
@@ -326,8 +284,7 @@ fn list(entries: &Vec<MapEntry>) {
 	}
 }
 
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where P: AsRef<Path>, {
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>> where P: AsRef<Path>, {
 	let file = File::open(filename)?;
 	Ok(io::BufReader::new(file).lines())
 }
@@ -336,53 +293,41 @@ fn init() -> std::io::Result<()> {
 
 	println!("[init] initializing pxc..");
 
-	let mut newfilepath = "".to_owned();
-	let mut homedir: String = "".to_owned();
-	homedir.to_owned();
-
 	if cfg!(windows) {
 		// windows todo
 		return Ok(());
 
 	} else if cfg!(unix) {
 
-		match home::home_dir() {
-			Some(path) if !path.as_os_str().is_empty() => homedir.push_str(path.as_os_str().to_str().unwrap()),
-				_ => println!("Unable to get your home dir!"),
-		}
+		let pxcpath = get_pxc_path();
 
 		// pxc directory: root pxec directory
-		match fs::create_dir_all(homedir.clone() + "/.pxc"){
+		match fs::create_dir_all(&pxcpath){
 			Ok(()) => {},
 			Err(dir) => {println!("error when creating dir {}", dir)}
 		}
 		// map directory: stores the mapping of command to script
-		match fs::create_dir_all(homedir.clone() + "/.pxc/map/"){
+		match fs::create_dir_all(pxcpath.to_owned() + "/map/"){
 			Ok(()) => {},
 			Err(dir) => {println!("error when creating dir {}", dir)}
 		}
 		// commands directory: stores all script files
-		match fs::create_dir_all(homedir.clone() + "/.pxc/cmd/"){
+		match fs::create_dir_all(pxcpath.to_owned() + "/cmd/"){
 			Ok(()) => {},
 			Err(dir) => {println!("error when creating dir {}", dir)}
 		}
 
-	}
-
-	newfilepath.push_str(&homedir);
-	newfilepath.push_str("/.pxc/map/pxc");
-
+	let newfilepath: String = pxcpath.to_owned() + "/map/pxc";
 	if Path::new(&newfilepath).exists() {
 		println!("[init] file already exists");
 		return Ok(());
 	}
 
-	println!("path {}", newfilepath);
 	let mut file = File::create(&newfilepath)?;
-
 	file.write_all(b"test;test;00000000!")?;
 
 	println!("[init] init successful!");
+	}
 
 	Ok(())
 }
