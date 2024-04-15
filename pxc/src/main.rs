@@ -1,12 +1,10 @@
 use std::env;
-use std::fs::read_to_string;
 use std::fs::File;
 use std::fs;
 use std::io::{self, BufRead};
-use std::io::prelude::*;
 use std::path::Path;
 use std::io::{BufWriter, Write};
-use rand::{distributions::Alphanumeric, Rng};
+use rand::Rng;
 use std::process::Command;
 
 struct MapEntry {
@@ -147,7 +145,7 @@ fn main() {
 							Command::new("sh")
 							.arg("-c")
 							.arg(cmdpath + " " + &cmdargs)
-							.spawn()
+							.status()
 							.expect("failed to execute process");
 						},
 						None  => println!("command '{}' not found", arg)
@@ -279,8 +277,10 @@ fn edit(entry_name: &str, entries: Vec<MapEntry>) {
 }
 
 fn list(entries: &Vec<MapEntry>) {
+	println!("NAME\t\tCATEGORY\tFILE");
+	println!("----------------------------------------");
 	for entry in entries.iter() {
-		println!("[{}  ||  {}  ||  {}]",entry.name,entry.category,entry.filehash);
+		println!("{}\t\t{}\t\t{}",entry.name,entry.category,entry.filehash);
 	}
 }
 
