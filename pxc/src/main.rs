@@ -54,7 +54,7 @@ fn check_sequence_exists(sequence: &str, entries: &mut Vec<MapEntry>) -> bool {
 
 fn main() {
 
-	let mut entries: Vec<MapEntry> = read_map_file("pxc");
+	let mut entries: Vec<MapEntry> = read_map_file();
 	let mut args = env::args().skip(1);
 
 	if let Some(arg) = args.next() {
@@ -62,19 +62,21 @@ fn main() {
 			"h" => help(),
 			"a" | "add" => {
 
-				let mut entry_name = "".to_owned();
-				let mut entry_category= "".to_owned();
+				let entry_name: String;
+				let entry_category: String;
 
 				if let Some(arg1) = args.next() {
-					entry_name.push_str(&arg1);
+					entry_name = arg1;
 				} else {
 					println!("[add] no name supplied, exiting.");
 					return;
 				}
+
 				if let Some(arg1) = args.next() {
-					entry_category.push_str(&arg1);
+					entry_category = arg1;
 				} else {
 					println!("[add] adding {} with default category", entry_name);
+					entry_category = "default".to_string();
 				}
 					
 				let mut char_sequence = gen_char_sequence();
@@ -83,7 +85,7 @@ fn main() {
 					char_sequence = gen_char_sequence();
 				}
 
-					add( MapEntry {name: entry_name.to_string(),category: entry_category.to_string(),filehash: char_sequence}, &mut entries);
+					add( MapEntry {name: entry_name.to_string(),category: entry_category,filehash: char_sequence}, &mut entries);
 					edit(&entry_name, entries);
 				},
 			"e" | "edit" => edit( &args.next().unwrap(), entries),
@@ -110,46 +112,7 @@ fn main() {
 					}
 				},
 			_ => {
-					// run cmd
-					let opt_entry = get_entry_by_name(&arg, entries);
-					
-					match opt_entry {
-						Some(ent) => {
-							println!("running command '{}', filehash: {}", arg,  ent.filehash);
-							let cmdpath = get_pxc_path().to_string() + "/cmd/" + &ent.filehash;
-							println!("cmd path: '{}'", cmdpath);
-
-							// set permission
-							Command::new("chmod")
-							.arg("777")
-							.arg(&cmdpath)
-							.status()
-							.expect("failed to execute process");
-
-							let mut cmdargs = "".to_owned();
-
-							loop {
-								match args.next() {
-									Some(carg) => {
-										cmdargs.push_str(&carg.to_owned());
-										cmdargs.push_str(" ");
-										
-									},
-									None => {break;}
-								};
-							}
-
-							println!("carg: {}", cmdargs);
-
-							// run
-							Command::new("sh")
-							.arg("-c")
-							.arg(cmdpath + " " + &cmdargs)
-							.status()
-							.expect("failed to execute process");
-						},
-						None  => println!("command '{}' not found", arg)
-					};
+					run_cmd(&arg, &mut args, entries);
 				}
 		}
 	} else {
@@ -157,7 +120,46 @@ fn main() {
 	}
 }
 
-fn read_map_file(map: &str) -> Vec<MapEntry> {
+fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>,  entries: Vec<MapEntry>) {
+	match get_entry_by_name(&arg, entries) {
+		Some(ent) => {
+			println!("running command '{}', filehash: {}", arg,  ent.filehash);
+			let cmdpath = get_pxc_path().to_string() + "/cmd/" + &ent.filehash;
+			println!("cmd path: '{}'", cmdpath);
+
+			// set permission
+			Command::new("chmod")
+			.arg("777")
+			.arg(&cmdpath)
+			.status()
+			.expect("failed to execute process");
+
+			let mut cmdargs = "".to_owned();
+
+			loop {
+				match args.next() {
+					Some(carg) => {
+						cmdargs.push_str(&carg.to_owned());
+						cmdargs.push_str(" ");
+						
+					},
+					None => {break;}
+				};
+			}
+
+			println!("cargs: {}", cmdargs);
+
+			Command::new("sh")
+			.arg("-c")
+			.arg(cmdpath + " " + &cmdargs)
+			.status()
+			.expect("failed to execute process");
+		},
+		None  => println!("command '{}' not found", arg)
+	};
+}
+
+fn read_map_file() -> Vec<MapEntry> {
 
 	let mut result1: Vec<MapEntry> = Vec::new();
 	let map_file = get_pxc_path() + "/map/pxc";
