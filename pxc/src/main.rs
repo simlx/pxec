@@ -60,8 +60,7 @@ fn main() {
 	if let Some(arg) = args.next() {
 		match &arg[..] {
 			"h" => help(),
-			"a" | "add" => {
-
+			"a" | "add" | "e" | "edit" => {
 				let entry_name: String;
 				let entry_category: String;
 
@@ -85,40 +84,34 @@ fn main() {
 					char_sequence = gen_char_sequence();
 				}
 
-					add( MapEntry {name: entry_name.to_string(),category: entry_category,filehash: char_sequence}, &mut entries);
-					edit(&entry_name, entries);
-				},
-			"e" | "edit" => edit( &args.next().unwrap(), entries),
+				add( MapEntry {name: entry_name.to_string(),
+						category: entry_category,filehash: char_sequence}, &mut entries);
+				edit(&entry_name, entries);
+			},
 			"r" | "rm" | "remove" => {
-					let mut entry_name = "".to_owned();
-					if let Some(arg1) = args.next() {
-						entry_name.push_str(&arg1);
-					} else {
-						println!("[rm] no name supplied, exiting.");
-						return;
-					}
-					remove(entry_name, &mut entries);
-				},
+				remove(&mut args, &mut entries);
+			},
 			"ls" | "list" => list(&entries), // pxc ls category(optional)
 			"pkg" => {
-					if let Some(arg1) = args.next() {
-						match &arg1[..] {
-							"install" | "in" | "i" => println!("pkg not yet implemented"),
-							"remove" | "rm" | "r" => println!("pkg not yet implemented"),
-							_ => println!("cpkg: invalid arg {}", arg1)
-						}
-					} else {
-						println!("[pkg] specify install or remove");
+				if let Some(arg1) = args.next() {
+					match &arg1[..] {
+						"install" | "in" | "i" => println!("pkg not yet implemented"),
+						"remove" | "rm" | "r" => println!("pkg not yet implemented"),
+						_ => println!("cpkg: invalid arg {}", arg1)
 					}
-				},
+				} else {
+					println!("[pkg] specify install or remove");
+				}
+			},
 			_ => {
 					run_cmd(&arg, &mut args, entries);
-				}
+			}
 		}
 	} else {
 		help();
 	}
 }
+
 
 fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>,  entries: Vec<MapEntry>) {
 	match get_entry_by_name(&arg, entries) {
@@ -127,7 +120,6 @@ fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>,  entries: V
 			let cmdpath = get_pxc_path().to_string() + "/cmd/" + &ent.filehash;
 			println!("cmd path: '{}'", cmdpath);
 
-			// set permission
 			Command::new("chmod")
 			.arg("777")
 			.arg(&cmdpath)
@@ -148,7 +140,6 @@ fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>,  entries: V
 			}
 
 			println!("cargs: {}", cmdargs);
-
 			Command::new("sh")
 			.arg("-c")
 			.arg(cmdpath + " " + &cmdargs)
@@ -161,17 +152,17 @@ fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>,  entries: V
 
 fn read_map_file() -> Vec<MapEntry> {
 
-	let mut result1: Vec<MapEntry> = Vec::new();
+	let mut result: Vec<MapEntry> = Vec::new();
 	let map_file = get_pxc_path() + "/map/pxc";
 
-	if let Ok(result) = read_lines(map_file) {
-		for line in result.flatten() {
-			let parts = line.split(";");
-			let test = parts.collect::<Vec<_>>();
-			result1.push(MapEntry { 
-				name: String::from(test[0]),
-				category: String::from(test[1]),
-				filehash: String::from(test[2])
+	if let Ok(map_lines) = read_lines(map_file) {
+		for line in map_lines.flatten() {
+			let parts = line.split(";").collect::<Vec<_>>();
+			result.push(MapEntry 
+				{
+					name:     parts[0].to_string(),
+					category: parts[1].to_string(),
+					filehash: parts[2].to_string()
 				}
 			);
 		}
@@ -183,10 +174,19 @@ fn read_map_file() -> Vec<MapEntry> {
 		}
 	}
 
-	return result1;
+	return result;
 }
 
-fn remove(entry_name: String, entries: &mut Vec<MapEntry>) {
+fn remove(args: &mut core::iter::Skip<crate::env::Args>, entries: &mut Vec<MapEntry>) {
+
+	let mut entry_name = "".to_owned();
+	if let Some(arg1) = args.next() {
+		entry_name.push_str(&arg1);
+	} else {
+		println!("[rm] no name supplied, exiting.");
+		return;
+	}
+
 	if !check_entry_exists(&entry_name, &entries) {
 		println!("[rm] map entry with name '{}' doesn't exist!", entry_name);
 		return;
