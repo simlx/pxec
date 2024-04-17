@@ -1,18 +1,17 @@
 # pxec
-Execute **applications**, **commands** and **links** through aliases
+Execute **scripts** through aliases
 
 # Building
-``make``
+``cargo build``
 
 # Platforms
-``Windows``  ``Linux``
+``Linux``
 
 # How to use
 | input            | example          | explanation                                      |   |     |
 |------------------|------------------|--------------------------------------------------|---|-----|
-| run alias        | x email          | execute <alias> from the command line            |   |     |
-| run builtin cmd  | x ls             | execute the list command from the command line   |   |     |
-| interactive      | x                | enter interactive mode                           |   |     |
+| run alias        | pxc email        | execute <alias>                                  |   |     |
+| run builtin cmd  | pxc ls           | list all entries                                 |   |     |
 
 # License
 GPLv3
