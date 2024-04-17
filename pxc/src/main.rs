@@ -15,14 +15,9 @@ struct MapEntry {
 
 fn help() {
 	println!("pxc commands:");
-	println!("  ls (list)");
-	println!("  a (add)");
-	println!("  e (edit)");
-	println!("  r (remove)");
-	println!("  init (create map.pxc)");
-	println!("  pkg");
-	println!("    install <pkg>");
-	println!("    remove <pkg>");
+	println!("-> list,ls");
+	println!("-> edit");
+	println!("-> rm");
 }
 
 fn gen_char_sequence() -> String {
@@ -60,7 +55,7 @@ fn main() {
 	if let Some(arg) = args.next() {
 		match &arg[..] {
 			"h" => help(),
-			"a" | "add" | "e" | "edit" => {
+			"edit" => {
 				let entry_name: String;
 				let entry_category: String;
 
@@ -88,7 +83,7 @@ fn main() {
 						category: entry_category,filehash: char_sequence}, &mut entries);
 				edit(&entry_name, entries);
 			},
-			"r" | "rm" | "remove" => {
+			"rm" => {
 				remove(&mut args, &mut entries);
 			},
 			"ls" | "list" => list(&entries), // pxc ls category(optional)
@@ -179,9 +174,10 @@ fn read_map_file() -> Vec<MapEntry> {
 
 fn remove(args: &mut core::iter::Skip<crate::env::Args>, entries: &mut Vec<MapEntry>) {
 
-	let mut entry_name = "".to_owned();
+	let entry_name;
+
 	if let Some(arg1) = args.next() {
-		entry_name.push_str(&arg1);
+		entry_name = arg1;
 	} else {
 		println!("[rm] no name supplied, exiting.");
 		return;
@@ -192,7 +188,8 @@ fn remove(args: &mut core::iter::Skip<crate::env::Args>, entries: &mut Vec<MapEn
 		return;
 	}
 
-	entries.remove(entries.iter().position(|x| *&x.name == entry_name).expect("not found"));
+	entries.remove(entries.iter().position(|x| *&x.name == entry_name.to_string())
+			.expect("not found"));
 
 	save_map(&entries);
 
@@ -233,7 +230,8 @@ fn add(mut new_entry: MapEntry, entries: &mut Vec<MapEntry>) {
 
 fn get_pxc_path() -> String {
 	match home::home_dir() {
-		Some(path) if !path.as_os_str().is_empty() => return  path.as_os_str().to_str().unwrap().to_string() + "/.pxc",
+		Some(path) if !path.as_os_str().is_empty() => 
+			return  path.as_os_str().to_str().unwrap().to_string() + "/.pxc",
 			_ => { 
 				println!("Unable to get pxc path!");
 				return "".to_string(); 
@@ -255,7 +253,9 @@ fn save_map(entries: &Vec<MapEntry>) {
     let mut file_buffer = BufWriter::new(file_buffer);
 
     for entry in entries {
-		let entry_line = "".to_owned() + &entry.name + ";" + &entry.category + ";" + &entry.filehash;
+		let entry_line = "".to_owned() + &entry.name + ";" +
+										 &entry.category + ";" + 
+										 &entry.filehash;
         write!(file_buffer, "{}\n", entry_line).expect("unable to write");
     }
 
@@ -319,16 +319,16 @@ fn init() -> std::io::Result<()> {
 			Err(dir) => {println!("error when creating dir {}", dir)}
 		}
 
-	let newfilepath: String = pxcpath.to_owned() + "/map/pxc";
-	if Path::new(&newfilepath).exists() {
-		println!("[init] file already exists");
-		return Ok(());
-	}
+		let newfilepath: String = pxcpath.to_owned() + "/map/pxc";
+		if Path::new(&newfilepath).exists() {
+			println!("[init] file already exists");
+			return Ok(());
+		}
 
-	let mut file = File::create(&newfilepath)?;
-	file.write_all(b"test;test;00000000!")?;
+		let mut file = File::create(&newfilepath)?;
+		file.write_all(b"test;test;00000000!")?;
 
-	println!("[init] init successful!");
+		println!("[init] init successful!");
 	}
 
 	Ok(())
