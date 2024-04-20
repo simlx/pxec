@@ -15,6 +15,7 @@ Execute **scripts** through aliases
 | ls [category]           | list entries     |
 | lsc                     | list categories  | 
 | edit [name] [category]  | edit entry       | 
+| add [name]              | edit entry       | 
 | rm [name]               | remove entry     | 
 
 # License

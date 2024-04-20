@@ -19,6 +19,7 @@ fn help() {
 	println!("list            -> ls [category]");
 	println!("list categories -> lsc");
 	println!("edit entry      -> edit [name] [category]");
+	println!("add entry       -> add [name]");
 	println!("remove entry    -> rm [name]");
 }
 
@@ -49,10 +50,9 @@ fn main() {
 	if let Some(arg) = args.next() {
 		match &arg[..] {
 			"h" => help(),
-			"edit" => {
-				let entry_name: String;
-				let entry_category: String;
+			"add" => {
 
+				let entry_name: String;
 				if let Some(arg1) = args.next() {
 					entry_name = arg1;
 				} else {
@@ -60,11 +60,12 @@ fn main() {
 					return;
 				}
 
+				let entry_category: String;
 				if let Some(arg1) = args.next() {
 					entry_category = arg1;
 				} else {
-					println!("[add] adding {} with default category", entry_name);
 					entry_category = "default".to_string();
+					println!("[add] adding '{}' with default category", entry_name);
 				}
 					
 				let mut char_sequence = gen_char_sequence();
@@ -75,7 +76,25 @@ fn main() {
 
 				add( MapEntry {name: entry_name.to_string(),
 						category: entry_category.clone(), filehash: char_sequence}, &mut entries);
-					
+			},
+			"edit" => {
+
+				let entry_name: String;
+				if let Some(arg1) = args.next() {
+					entry_name = arg1;
+				} else {
+					println!("[edit] no name supplied, exiting.");
+					return;
+				}
+
+				let entry_category: String;
+				if let Some(arg1) = args.next() {
+					entry_category = arg1;
+					println!("[edit] changing category to '{}'", entry_category);
+				} else {
+					entry_category = "no-new-category".to_string();
+				}
+
 				edit(&entry_name, entries, &entry_category);
 			},
 			"rm" => {
@@ -255,7 +274,10 @@ fn edit(entry_name: &str, mut entries: Vec<MapEntry>, category_name: &str) {
 
 	for entry in &mut entries {
 		if entry.name == entry_name {
-			entry.category = category_name.to_string();
+
+			if category_name != "no-new-category" {
+				entry.category = category_name.to_string();
+			}
 
 			println!("[edit] editing command '{}', filehash: {}", entry_name,  entry.filehash);
 			let cmdpath = get_pxc_path().to_string() + "/cmd/" + &entry.filehash;
