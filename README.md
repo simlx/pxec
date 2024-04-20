@@ -7,11 +7,15 @@ Execute **scripts** through aliases
 # Platforms
 ``Linux``
 
-# How to use
-| input            | example          | explanation                                      |   |     |
-|------------------|------------------|--------------------------------------------------|---|-----|
-| run alias        | pxc email        | execute <alias>                                  |   |     |
-| run builtin cmd  | pxc ls           | list all entries                                 |   |     |
+# Usage
+
+| input            | description      |
+|------------------|------------------|
+|                  | show help        |
+| ls [category]    | list entries     |
+| lsc              | list categories  | 
+| edit [name]      | edit entry       | 
+| rm [name]        | remove entry     | 
 
 # License
 GPLv3
