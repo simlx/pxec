@@ -9,13 +9,13 @@ Execute **scripts** through aliases
 
 # Usage
 
-| input            | description      |
-|------------------|------------------|
-|                  | show help        |
-| ls [category]    | list entries     |
-| lsc              | list categories  | 
-| edit [name]      | edit entry       | 
-| rm [name]        | remove entry     | 
+| input                   | description      |
+|-------------------------|------------------|
+|                         | show help        |
+| ls [category]           | list entries     |
+| lsc                     | list categories  | 
+| edit [name] [category]  | edit entry       | 
+| rm [name]               | remove entry     | 
 
 # License
 GPLv3

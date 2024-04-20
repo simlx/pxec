@@ -7,6 +7,7 @@ use std::io::{BufWriter, Write};
 use rand::Rng;
 use std::process::Command;
 
+#[derive(Clone)]
 struct MapEntry {
 	name: String,
 	category: String,
@@ -17,7 +18,7 @@ fn help() {
 	println!("pxc help:");
 	println!("list            -> ls [category]");
 	println!("list categories -> lsc");
-	println!("edit entry      -> edit [name]");
+	println!("edit entry      -> edit [name] [category]");
 	println!("remove entry    -> rm [name]");
 }
 
@@ -81,35 +82,19 @@ fn main() {
 				}
 
 				add( MapEntry {name: entry_name.to_string(),
-						category: entry_category,filehash: char_sequence}, &mut entries);
-				edit(&entry_name, entries);
+						category: entry_category.clone(), filehash: char_sequence}, &mut entries);
+					
+				edit(&entry_name, entries, &entry_category);
 			},
 			"rm" => {
 				remove(&mut args, &mut entries);
 			},
 			"ls" | "list" => {
-				let category: String;
-				
-				if let Some(arg1) = args.next() {
-					category = arg1;
-				} else {
-					category = "".to_string();
-				}	
+				let category: String = if let Some(arg1) = args.next() { arg1 } else {"".to_string() };
 				list(&entries, &category);
-			}, // pxc ls category(optional)
+			},
 			"lsc" => {
 				list_categories(&entries);
-			},
-			"pkg" => {
-				if let Some(arg1) = args.next() {
-					match &arg1[..] {
-						"install" | "in" | "i" => println!("pkg not yet implemented"),
-						"remove" | "rm" | "r" => println!("pkg not yet implemented"),
-						_ => println!("cpkg: invalid arg {}", arg1)
-					}
-				} else {
-					println!("[pkg] specify install or remove");
-				}
 			},
 			_ => {
 					run_cmd(&arg, &mut args, entries);
@@ -141,7 +126,6 @@ fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>,  entries: V
 					Some(carg) => {
 						cmdargs.push_str(&carg.to_owned());
 						cmdargs.push_str(" ");
-						
 					},
 					None => {break;}
 				};
@@ -275,20 +259,24 @@ fn save_map(entries: &Vec<MapEntry>) {
 	println!("[save] file saved!");
 }
 
-fn edit(entry_name: &str, entries: Vec<MapEntry>) {
-	match get_entry_by_name(&entry_name, entries) {
-		Some(ent) => {
-			println!("[edit] editing command '{}', filehash: {}", entry_name,  ent.filehash);
-			let cmdpath = get_pxc_path().to_string() + "/cmd/" + &ent.filehash;
+fn edit(entry_name: &str, mut entries: Vec<MapEntry>, category_name: &str) {
+
+	for entry in &mut entries {
+		if entry.name == entry_name {
+			entry.category = category_name.to_string();
+
+			println!("[edit] editing command '{}', filehash: {}", entry_name,  entry.filehash);
+			let cmdpath = get_pxc_path().to_string() + "/cmd/" + &entry.filehash;
 			println!("cmd path: '{}'", cmdpath);
 
 			Command::new("vim")
 			.arg(cmdpath)
 			.status()
 			.expect("failed to execute process");
-		},
-		None  => println!("command '{}' not found", entry_name)
-	};
+		}
+	}
+
+	save_map(&entries);
 }
 
 fn list_categories(entries: &Vec<MapEntry>) {
