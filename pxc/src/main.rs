@@ -23,21 +23,13 @@ fn help() {
 }
 
 fn gen_char_sequence() -> String {
-
     const CHARSET: &[u8] = b"ABCDEF0123456789";
-    const PASSWORD_LEN: usize = 8;
-    let mut rng = rand::thread_rng();
-
-    let password: String = (0..PASSWORD_LEN)
-        .map(|_| {
-            let idx = rng.gen_range(0..CHARSET.len());
-            CHARSET[idx] as char
-        })
-        .collect();
-
-    println!("{:?}", password);
-
-	return password;
+	return (0..8)
+	.map(|_| {
+		let idx = rand::thread_rng().gen_range(0..CHARSET.len());
+		CHARSET[idx] as char
+	})
+	.collect();
 }
 
 fn check_sequence_exists(sequence: &str, entries: &mut Vec<MapEntry>) -> bool {
