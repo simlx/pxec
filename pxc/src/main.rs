@@ -14,10 +14,11 @@ struct MapEntry {
 }
 
 fn help() {
-	println!("pxc commands:");
-	println!("-> list,ls");
-	println!("-> edit");
-	println!("-> rm");
+	println!("pxc help:");
+	println!("list            -> ls [category]");
+	println!("list categories -> lsc");
+	println!("edit entry      -> edit [name]");
+	println!("remove entry    -> rm [name]");
 }
 
 fn gen_char_sequence() -> String {
@@ -86,7 +87,19 @@ fn main() {
 			"rm" => {
 				remove(&mut args, &mut entries);
 			},
-			"ls" | "list" => list(&entries), // pxc ls category(optional)
+			"ls" | "list" => {
+				let category: String;
+				
+				if let Some(arg1) = args.next() {
+					category = arg1;
+				} else {
+					category = "".to_string();
+				}	
+				list(&entries, &category);
+			}, // pxc ls category(optional)
+			"lsc" => {
+				list_categories(&entries);
+			},
 			"pkg" => {
 				if let Some(arg1) = args.next() {
 					match &arg1[..] {
@@ -278,11 +291,34 @@ fn edit(entry_name: &str, entries: Vec<MapEntry>) {
 	};
 }
 
-fn list(entries: &Vec<MapEntry>) {
+fn list_categories(entries: &Vec<MapEntry>) {
+
+	let mut cat_list: Vec<String> =  Vec::new();
+
+	for entry in entries {
+		let mut found = false;
+		for cat in &cat_list {
+			if cat == &entry.category {
+				found = true;
+			}
+		}
+		if found == false {
+			cat_list.push(entry.category.to_string());
+		}
+	}
+	println!("categories:");
+	for cat in cat_list {
+		println!("{}", cat);
+	}
+}
+
+fn list(entries: &Vec<MapEntry>, category_name: &str) {
 	println!("NAME\t\tCATEGORY\tFILE");
 	println!("----------------------------------------");
 	for entry in entries.iter() {
-		println!("{}\t\t{}\t\t{}",entry.name,entry.category,entry.filehash);
+		if category_name == "" || entry.category == category_name {
+			println!("{}\t\t{}\t\t{}",entry.name,entry.category,entry.filehash);
+		}
 	}
 }
 
