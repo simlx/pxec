@@ -20,7 +20,7 @@ fn help() {
 	println!("list categories -> lsc");
 	println!("edit entry      -> edit [name] [category]");
 	println!("add entry       -> add [name]");
-	println!("ext entry       -> ext [name]");
+	println!("export command  -> ext [name]");
 	println!("remove entry    -> rm [name]");
 }
 
@@ -58,6 +58,12 @@ fn main() {
 					entry_name = arg1;
 				} else {
 					println!("[add] no name supplied, exiting.");
+					return;
+				}
+
+				if check_entry_exists(&entry_name, &entries) {
+					println!("[add] map entry with this name already exists, editing");
+					edit(&entry_name, entries, "no-new-category");
 					return;
 				}
 
@@ -267,7 +273,7 @@ fn get_entry_by_name(entry_name: &str, entries: Vec<MapEntry>) -> Option<MapEntr
 
 fn add(mut new_entry: MapEntry, entries: &mut Vec<MapEntry>) {
 	if check_entry_exists(&new_entry.name, entries) {
-		println!("[add] map entry with this name already exists!");
+		println!("[add] map entry with this name already exists, this should not happen!");
 		return;
 	}
 	if new_entry.category == "" {
