@@ -20,6 +20,7 @@ fn help() {
 	println!("list categories -> lsc");
 	println!("edit entry      -> edit [name] [category]");
 	println!("add entry       -> add [name]");
+	println!("ext entry       -> ext [name]");
 	println!("remove entry    -> rm [name]");
 }
 
@@ -76,6 +77,10 @@ fn main() {
 
 				add( MapEntry {name: entry_name.to_string(),
 						category: entry_category.clone(), filehash: char_sequence}, &mut entries);
+
+				ext(&entry_name, &mut entries);
+
+				edit(&entry_name, entries, &entry_category);
 			},
 			"edit" => {
 
@@ -96,6 +101,18 @@ fn main() {
 				}
 
 				edit(&entry_name, entries, &entry_category);
+			},
+			"ext" => {
+
+				let entry_name: String;
+				if let Some(arg1) = args.next() {
+					entry_name = arg1;
+				} else {
+					println!("[ext] no name supplied, exiting.");
+					return;
+				}
+
+				ext(&entry_name, &mut entries);
 			},
 			"rm" => {
 				remove(&mut args, &mut entries);
@@ -124,11 +141,6 @@ fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>,  entries: V
 			let cmdpath = get_pxc_path().to_string() + "/cmd/" + &ent.filehash;
 			println!("cmd path: '{}'", cmdpath);
 
-			Command::new("chmod")
-			.arg("777")
-			.arg(&cmdpath)
-			.status()
-			.expect("failed to execute process");
 
 			let mut cmdargs = "".to_owned();
 
@@ -180,6 +192,36 @@ fn read_map_file() -> Vec<MapEntry> {
 	return result;
 }
 
+fn ext(entry_name: &str,  entries: &mut Vec<MapEntry>) {
+
+	if !check_entry_exists(&entry_name, &entries) {
+		println!("[ext] map entry with name '{}' doesn't exist!", entry_name);
+		return;
+	}
+
+	if !cfg!(unix) {return; }
+
+	for entry in entries {
+		if entry.name == entry_name {
+
+			let extcmdpath = get_ext_path() + entry_name + ".pxc";
+			let cmdfilepath = get_pxc_path() + "/cmd/" + &entry.filehash;
+
+			let file_buffer = File::create(&extcmdpath).expect("unable to create file");
+			let mut file_buffer = BufWriter::new(file_buffer);
+		
+			write!(file_buffer, "{}\n", "exec ".to_owned() + &cmdfilepath + " \"$@\"").expect("unable to write");
+
+			Command::new("chmod")
+			.arg("777")
+			.arg(&extcmdpath)
+			.status()
+			.expect("failed to execute process");
+			
+		}
+	}
+	println!("[ext] exported command '{}.pxc'", entry_name);
+}
 fn remove(args: &mut core::iter::Skip<crate::env::Args>, entries: &mut Vec<MapEntry>) {
 
 	let entry_name;
@@ -231,6 +273,17 @@ fn add(mut new_entry: MapEntry, entries: &mut Vec<MapEntry>) {
 	if new_entry.category == "" {
 		new_entry.category = "default".to_string();
 	}
+ 
+	Command::new("touch")
+	.arg(get_pxc_path() + "/cmd/" +&new_entry.filehash)
+	.status()
+	.expect("failed to execute process");
+
+	Command::new("chmod")
+	.arg("777")
+	.arg(get_pxc_path() + "/cmd/" +&new_entry.filehash)
+	.status()
+	.expect("failed to execute process");
 
 	entries.push(new_entry);
 	save_map(entries);
@@ -246,6 +299,12 @@ fn get_pxc_path() -> String {
 			}
 	}
 }
+
+// path for externalized commands
+fn get_ext_path() -> String {
+	return "/usr/local/bin/".to_string();
+}
+
 
 fn save_map(entries: &Vec<MapEntry>) {
 	if !cfg!(unix) {return; }
