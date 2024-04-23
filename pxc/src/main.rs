@@ -244,8 +244,35 @@ fn remove(args: &mut core::iter::Skip<crate::env::Args>, entries: &mut Vec<MapEn
 		return;
 	}
 
+	let mut file_hash: String = "8723478546982389235".to_string();
+	for entry in entries.clone() {
+		if entry.name == entry_name {
+			file_hash = entry.filehash.to_string();
+		}
+	}
+
+	// remove command if exists.
+	let extpath = get_pxc_path() + "/cmd/" + &file_hash;
+
+	if Path::new(&extpath).exists() {
+		Command::new("rm")
+		.arg(&extpath)
+		.status()
+		.expect("failed to execute process");
+	}
+
 	entries.remove(entries.iter().position(|x| *&x.name == entry_name.to_string())
 			.expect("not found"));
+
+	// remove external command if exists.
+	let extpath = get_ext_path() + &entry_name + ".pxc";
+
+	if Path::new(&extpath).exists() {
+		Command::new("rm")
+		.arg(&extpath)
+		.status()
+		.expect("failed to execute process");
+	}
 
 	save_map(&entries);
 
