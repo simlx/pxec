@@ -411,7 +411,7 @@ fn list(entries: &Vec<MapEntry>, category_name: &str) {
     println!("----------------------------------------");
     for entry in entries.iter() {
         if category_name == "" || entry.category == category_name {
-            println!("{}\t\t{}\t\t{}",entry.name,entry.category,entry.filehash);
+            println!("{: <16}{: <16}{: <16}",entry.name,entry.category,entry.filehash);
         }
     }
 }
