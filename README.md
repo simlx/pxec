@@ -17,6 +17,6 @@ Execute **scripts** through aliases
 | edit [name] [category]  | edit entry       | 
 | add [name]              | edit entry       | 
 | rm [name]               | remove entry     | 
-
+| ext [name]              | export as .pxc   |
 # License
 GPLv3
