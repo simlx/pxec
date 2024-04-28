@@ -462,6 +462,7 @@ fn list(entries: &Vec<MapEntry>, category_name: &str) {
                 println!("{: <16}{: <16}{: <16}",entry.name,entry.category,entry.filehash);
             }
         }
+        println!();
     }
 }
 
