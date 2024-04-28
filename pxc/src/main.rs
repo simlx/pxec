@@ -456,14 +456,26 @@ fn list(entries: &Vec<MapEntry>, category_name: &str) {
     println!("NAME\t\tCATEGORY\tFILE");
     println!("----------------------------------------");
 
-    for category in get_categories(entries) {
+    if category_name != "" {
         for entry in entries.iter() {
-            if entry.category == category && category_name == "" || entry.category == category_name {
+            if entry.category == category_name {
                 println!("{: <16}{: <16}{: <16}",entry.name,entry.category,entry.filehash);
             }
         }
         println!();
     }
+    else {
+        for category in get_categories(entries) {
+            for entry in entries.iter() {
+                if entry.category == category {
+                    println!("{: <16}{: <16}{: <16}",entry.name,entry.category,entry.filehash);
+                }
+            }
+            println!();
+        }   
+    }
+
+
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>> where P: AsRef<Path>, {
