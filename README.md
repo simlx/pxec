@@ -2,17 +2,17 @@
 Execute **scripts** through aliases
 
 # pxc architecture
-.pxc/
-├── cmd
-│   ├── 0EE20629
-│   ├── 103A40A7
-    ├── EEEF804D
-│   ├── F7265AAD
-│   ├── F8D925B0
-│   └── FFED6378
-├── files
-└── map
-    └── pxc
+.pxc/<br/>
+├── cmd<br/>
+│   ├── 0EE20629<br/>
+│   ├── 103A40A7<br/>
+│   ├── EEEF804D<br/>
+│   ├── F7265AAD<br/>
+│   ├── F8D925B0<br/>
+│   └── FFED6378<br/>
+├── files<br/>
+└── map<br/>
+          └── pxc
 
 # Building
 ``cargo build --release``
