@@ -14,6 +14,10 @@ struct MapEntry {
     filehash: String
 }
 
+struct Config {
+    editor: String
+}
+
 fn help() {
     println!("pxc help:");
     println!("list            -> ls [category]");
@@ -46,13 +50,13 @@ fn check_sequence_exists(sequence: &str, entries: &mut Vec<MapEntry>) -> bool {
 fn main() {
 
     let mut entries: Vec<MapEntry> = read_map_file();
+    let config = read_config();
     let mut args = env::args().skip(1);
 
     if let Some(arg) = args.next() {
         match &arg[..] {
             "h" => help(),
             "add" => {
-
                 let entry_name: String;
                 if let Some(arg1) = args.next() {
                     entry_name = arg1;
@@ -63,7 +67,7 @@ fn main() {
 
                 if check_entry_exists(&entry_name, &entries) {
                     println!("[add] map entry with this name already exists, editing");
-                    edit(&entry_name, entries, "no-new-category");
+                    edit(&config, &entry_name, entries, "no-new-category");
                     return;
                 }
 
@@ -86,7 +90,7 @@ fn main() {
 
                 ext(&entry_name, &mut entries);
 
-                edit(&entry_name, entries, &entry_category);
+                edit(&config,&entry_name, entries, &entry_category);
             },
             "edit" => {
 
@@ -106,7 +110,7 @@ fn main() {
                     entry_category = "no-new-category".to_string();
                 }
 
-                edit(&entry_name, entries, &entry_category);
+                edit(&config,&entry_name, entries, &entry_category);
             },
             "ext" => {
 
@@ -145,8 +149,6 @@ fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>,  entries: V
         Some(ent) => {
             println!("running command '{}', filehash: {}", arg,  ent.filehash);
             let cmdpath = get_pxc_path().to_string() + "/cmd/" + &ent.filehash;
-            println!("cmd path: '{}'", cmdpath);
-
 
             let mut cmdargs = "".to_owned();
 
@@ -170,6 +172,44 @@ fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>,  entries: V
         None  => println!("command '{}' not found", arg)
     };
 }
+
+fn read_config() -> Config {
+
+    let pxcpath = get_pxc_path();
+    let config_path: String = pxcpath.to_owned() + "/config";
+    let config_filepath: String = pxcpath.to_owned() + "/config/config";
+
+    //default config values here
+    let mut config: Config = Config{editor:"vim".to_string()};
+
+    let mut editor_exists = false;
+
+    if Path::new(&config_path).exists() {
+        if let Ok(map_lines) = read_lines(&config_filepath) {
+            for line in map_lines.flatten() {
+                let parts = line.split(";").collect::<Vec<_>>();
+                match parts[0] {
+                    "editor" => {config.editor = parts[1].to_string(); editor_exists = true;}
+                    _ => {}
+                }
+            }
+        }
+    } else {
+        // config directory: stores config files
+        match fs::create_dir_all(pxcpath.to_owned() + "/config/"){
+            Ok(()) => {
+            },
+            Err(dir) => {println!("error when creating dir {}", dir)}
+        }
+    }
+
+    if editor_exists { // only write, when a config is missing. add && for future config entries
+        let mut file_buffer = File::create(&config_filepath).expect("unable to create file");
+        write!(file_buffer, "{}\n", "editor;".to_owned() + &config.editor).expect("unable to write");
+    }
+    return config;
+}
+
 
 fn read_map_file() -> Vec<MapEntry> {
 
@@ -362,7 +402,7 @@ fn save_map(entries: &Vec<MapEntry>) {
     println!("[save] file saved!");
 }
 
-fn edit(entry_name: &str, mut entries: Vec<MapEntry>, category_name: &str) {
+fn edit(config: &Config, entry_name: &str, mut entries: Vec<MapEntry>, category_name: &str) {
 
     for entry in &mut entries {
         if entry.name == entry_name {
@@ -373,9 +413,8 @@ fn edit(entry_name: &str, mut entries: Vec<MapEntry>, category_name: &str) {
 
             println!("[edit] editing command '{}', filehash: {}", entry_name,  entry.filehash);
             let cmdpath = get_pxc_path().to_string() + "/cmd/" + &entry.filehash;
-            println!("cmd path: '{}'", cmdpath);
 
-            Command::new("vim")
+            Command::new(config.editor.to_string())
                 .arg(cmdpath)
                 .status()
                 .expect("failed to execute process");
@@ -421,6 +460,8 @@ fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>> wher
     Ok(io::BufReader::new(file).lines())
 }
 
+
+
 fn init() -> std::io::Result<()> {
 
     println!("[init] initializing pxc..");
@@ -456,7 +497,7 @@ fn init() -> std::io::Result<()> {
         }
 
         let mut file = File::create(&newfilepath)?;
-        file.write_all(b"test;test;00000000!")?;
+        file.write_all(b"test;test;00000000")?;
 
         println!("[init] init successful!");
     }
