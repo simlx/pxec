@@ -424,7 +424,7 @@ fn edit(config: &Config, entry_name: &str, mut entries: Vec<MapEntry>, category_
     save_map(&entries);
 }
 
-fn list_categories(entries: &Vec<MapEntry>) {
+fn get_categories(entries: &Vec<MapEntry>) -> Vec<String> {
 
     let mut cat_list: Vec<String> =  Vec::new();
 
@@ -439,6 +439,13 @@ fn list_categories(entries: &Vec<MapEntry>) {
             cat_list.push(entry.category.to_string());
         }
     }
+    return cat_list;
+}
+
+fn list_categories(entries: &Vec<MapEntry>) {
+
+    let cat_list: Vec<String> =  get_categories(entries);
+
     println!("categories:");
     for cat in cat_list {
         println!("{}", cat);
@@ -448,9 +455,12 @@ fn list_categories(entries: &Vec<MapEntry>) {
 fn list(entries: &Vec<MapEntry>, category_name: &str) {
     println!("NAME\t\tCATEGORY\tFILE");
     println!("----------------------------------------");
-    for entry in entries.iter() {
-        if category_name == "" || entry.category == category_name {
-            println!("{: <16}{: <16}{: <16}",entry.name,entry.category,entry.filehash);
+
+    for category in get_categories(entries) {
+        for entry in entries.iter() {
+            if entry.category == category && category_name == "" || entry.category == category_name {
+                println!("{: <16}{: <16}{: <16}",entry.name,entry.category,entry.filehash);
+            }
         }
     }
 }
