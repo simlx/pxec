@@ -374,6 +374,7 @@ fn get_pxc_path() -> String {
 }
 
 // path for externalized commands
+
 fn get_ext_path() -> String {
     return "/usr/local/bin/".to_string();
 }
