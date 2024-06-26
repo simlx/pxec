@@ -171,25 +171,44 @@ fn main() {
                         println!("Command not found");
                         return;
                     }
-                    println!("Did you mean one of:");
+
+                    if possible_cmds.len() > 1 {
+                        println!("Did you mean one of:");
+                    }
+
                     let mut choice_entries = Vec::new();
                     let mut counter = 0;
                     for cmd in possible_cmds {
                         counter += 1;
-                        println!("{}. ->{}",counter, cmd);
+                        println!("{}. ->{}", counter, cmd);
                         choice_entries.push(cmd);
-
                     }
                     let mut input_text = String::new();
-                    println!("select: ");
+
+                    if choice_entries.len() > 1 {
+                        println!("select: ");
+                    } else {
+                        println!("Press Enter to run {}", choice_entries.get(0).unwrap());
+                    }
+
                     io::stdin()
                         .read_line(&mut input_text)
                         .expect("failed to read from stdin");
-                
+
                     let trimmed = input_text.trim();
                     match trimmed.parse::<u32>() {
-                        Ok(i) => run_cmd(&choice_entries.get((i as usize -1 )).unwrap(), &mut args, entries),
-                        Err(..) => println!("invalid option: {}", trimmed),
+                        Ok(i) => run_cmd(
+                            &choice_entries.get((i as usize - 1)).unwrap(),
+                            &mut args,
+                            entries,
+                        ),
+                        Err(..) => {
+                            if trimmed == "" && choice_entries.len() == 1 {
+                                run_cmd(&choice_entries.get((0)).unwrap(), &mut args, entries)
+                            } else {
+                                println!("invalid option: {}", &trimmed);
+                            }
+                        }
                     };
                 }
             }
@@ -200,7 +219,8 @@ fn main() {
 }
 
 fn find_entries_containing(mut entries: &Vec<MapEntry>, mut chars: String) -> Vec<String> {
-    return entries.clone()
+    return entries
+        .clone()
         .into_iter()
         .filter(|entry| entry.name.contains(&chars))
         .map(|entry| entry.name)
