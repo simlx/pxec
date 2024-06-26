@@ -55,6 +55,21 @@ fn main() {
     if let Some(arg) = args.next() {
         match &arg[..] {
             "h" => help(),
+            "print" => {
+                let entry_name: String;
+                if let Some(arg1) = args.next() {
+                    entry_name = arg1;
+                } else {
+                    println!("[print] no name supplied, exiting.");
+                    return;
+                }
+                if !check_entry_exists(&entry_name, &entries) {
+                    println!("[print] item with name '{}' doesn't exist", entry_name);
+                    return;
+                }
+                print_cmd(&entry_name, entries);
+            },
+            
             "add" => {
                 let entry_name: String;
                 if let Some(arg1) = args.next() {
@@ -424,6 +439,19 @@ fn save_map(entries: &Vec<MapEntry>) {
     }
 
     println!("[save] file saved!");
+}
+
+fn print_cmd(entry_name: &str, entries: Vec<MapEntry>) {
+    let position_of_entry = entries.iter().position(|entry| entry.name == entry_name);
+    let cmdpath = get_pxc_path().to_string() + "/cmd/" + &entries[position_of_entry.unwrap()].filehash;
+
+    if Path::new(&cmdpath).exists() {
+        if let Ok(map_lines) = read_lines(&cmdpath) {
+            for line in map_lines.flatten() {
+                println!("{}",line);
+            }
+        }
+    }
 }
 
 fn edit(config: &Config, entry_name: &str, mut entries: Vec<MapEntry>, category_name: &str) {
