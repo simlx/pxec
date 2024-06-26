@@ -68,8 +68,8 @@ fn main() {
                     return;
                 }
                 print_cmd(&entry_name, entries);
-            },
-            
+            }
+
             "add" => {
                 let entry_name: String;
                 if let Some(arg1) = args.next() {
@@ -160,12 +160,34 @@ fn main() {
                 list_categories(&entries);
             }
             _ => {
-                run_cmd(&arg, &mut args, entries);
+                let cmd = arg;
+
+                if check_entry_exists(&cmd, &entries) {
+                    run_cmd(&cmd, &mut args, entries);
+                    return;
+                } else {
+                    let possible_cmds = find_entries_containing(entries, cmd);
+                    if possible_cmds.len() == 0 {
+                        return;
+                    }
+                    println!("Did you mean one of:");
+                    for cmd in possible_cmds {
+                        println!("🮥 {}", cmd);
+                    }
+                }
             }
         }
     } else {
         help();
     }
+}
+
+fn find_entries_containing(mut entries: Vec<MapEntry>, mut chars: String) -> Vec<String> {
+    return entries
+        .into_iter()
+        .filter(|entry| entry.name.contains(&chars))
+        .map(|entry| entry.name)
+        .collect();
 }
 
 fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>, entries: Vec<MapEntry>) {
@@ -443,12 +465,13 @@ fn save_map(entries: &Vec<MapEntry>) {
 
 fn print_cmd(entry_name: &str, entries: Vec<MapEntry>) {
     let position_of_entry = entries.iter().position(|entry| entry.name == entry_name);
-    let cmdpath = get_pxc_path().to_string() + "/cmd/" + &entries[position_of_entry.unwrap()].filehash;
+    let cmdpath =
+        get_pxc_path().to_string() + "/cmd/" + &entries[position_of_entry.unwrap()].filehash;
 
     if Path::new(&cmdpath).exists() {
         if let Ok(map_lines) = read_lines(&cmdpath) {
             for line in map_lines.flatten() {
-                println!("{}",line);
+                println!("{}", line);
             }
         }
     }
