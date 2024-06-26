@@ -166,14 +166,31 @@ fn main() {
                     run_cmd(&cmd, &mut args, entries);
                     return;
                 } else {
-                    let possible_cmds = find_entries_containing(entries, cmd);
+                    let possible_cmds = find_entries_containing(&entries, cmd);
                     if possible_cmds.len() == 0 {
+                        println!("Command not found");
                         return;
                     }
                     println!("Did you mean one of:");
+                    let mut choice_entries = Vec::new();
+                    let mut counter = 0;
                     for cmd in possible_cmds {
-                        println!("🮥 {}", cmd);
+                        counter += 1;
+                        println!("{}. ->{}",counter, cmd);
+                        choice_entries.push(cmd);
+
                     }
+                    let mut input_text = String::new();
+                    println!("select: ");
+                    io::stdin()
+                        .read_line(&mut input_text)
+                        .expect("failed to read from stdin");
+                
+                    let trimmed = input_text.trim();
+                    match trimmed.parse::<u32>() {
+                        Ok(i) => run_cmd(&choice_entries.get((i as usize -1 )).unwrap(), &mut args, entries),
+                        Err(..) => println!("invalid option: {}", trimmed),
+                    };
                 }
             }
         }
@@ -182,8 +199,8 @@ fn main() {
     }
 }
 
-fn find_entries_containing(mut entries: Vec<MapEntry>, mut chars: String) -> Vec<String> {
-    return entries
+fn find_entries_containing(mut entries: &Vec<MapEntry>, mut chars: String) -> Vec<String> {
+    return entries.clone()
         .into_iter()
         .filter(|entry| entry.name.contains(&chars))
         .map(|entry| entry.name)
