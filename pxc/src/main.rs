@@ -1,9 +1,12 @@
+extern crate rand;
 use rand::Rng;
 use std::env;
 use std::fs;
 use std::fs::File;
+use std::fs::Permissions;
 use std::io::{self, BufRead};
 use std::io::{BufWriter, Write};
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command;
 
@@ -32,7 +35,7 @@ fn gen_char_sequence() -> String {
     const CHARSET: &[u8] = b"ABCDEF0123456789";
     return (0..8)
         .map(|_| {
-            let idx = rand::thread_rng().gen_range(0..CHARSET.len());
+            let idx = rand::thread_rng().gen_range(0, CHARSET.len());
             CHARSET[idx] as char
         })
         .collect();
@@ -162,55 +165,57 @@ fn main() {
             _ => {
                 let cmd = arg;
 
+                // Run command if exact match
                 if check_entry_exists(&cmd, &entries) {
                     run_cmd(&cmd, &mut args, entries);
                     return;
-                } else {
-                    let possible_cmds = find_entries_containing(&entries, cmd);
-                    if possible_cmds.len() == 0 {
-                        println!("Command not found");
-                        return;
-                    }
-
-                    if possible_cmds.len() > 1 {
-                        println!("Did you mean one of:");
-                    }
-
-                    let mut choice_entries = Vec::new();
-                    let mut counter = 0;
-                    for cmd in possible_cmds {
-                        counter += 1;
-                        println!("{}. ->{}", counter, cmd);
-                        choice_entries.push(cmd);
-                    }
-                    let mut input_text = String::new();
-
-                    if choice_entries.len() > 1 {
-                        println!("select: ");
-                    } else {
-                        println!("Press Enter to run {}", choice_entries.get(0).unwrap());
-                    }
-
-                    io::stdin()
-                        .read_line(&mut input_text)
-                        .expect("failed to read from stdin");
-
-                    let trimmed = input_text.trim();
-                    match trimmed.parse::<u32>() {
-                        Ok(i) => run_cmd(
-                            &choice_entries.get((i as usize - 1)).unwrap(),
-                            &mut args,
-                            entries,
-                        ),
-                        Err(..) => {
-                            if trimmed == "" && choice_entries.len() == 1 {
-                                run_cmd(&choice_entries.get((0)).unwrap(), &mut args, entries)
-                            } else {
-                                println!("invalid option: {}", &trimmed);
-                            }
-                        }
-                    };
                 }
+
+                let possible_cmds = find_entries_containing(&entries, cmd);
+
+                if possible_cmds.len() == 0 {
+                    println!("Command not found");
+                    return;
+                }
+
+                if possible_cmds.len() > 1 {
+                    println!("Did you mean one of:");
+                }
+
+                let mut choice_entries = Vec::new();
+                let mut counter = 0;
+                for cmd in possible_cmds {
+                    counter += 1;
+                    println!("{}. ->{}", counter, cmd);
+                    choice_entries.push(cmd);
+                }
+                let mut input_text = String::new();
+
+                if choice_entries.len() > 1 {
+                    println!("select: ");
+                } else {
+                    println!("Press Enter to run {}", choice_entries.get(0).unwrap());
+                }
+
+                io::stdin()
+                    .read_line(&mut input_text)
+                    .expect("failed to read from stdin");
+
+                let trimmed = input_text.trim();
+                match trimmed.parse::<u32>() {
+                    Ok(i) => run_cmd(
+                        &choice_entries.get(i as usize - 1).unwrap(),
+                        &mut args,
+                        entries,
+                    ),
+                    Err(..) => {
+                        if trimmed == "" && choice_entries.len() == 1 {
+                            run_cmd(&choice_entries.get(0).unwrap(), &mut args, entries)
+                        } else {
+                            println!("invalid option: {}", &trimmed);
+                        }
+                    }
+                };
             }
         }
     } else {
@@ -256,6 +261,15 @@ fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>, entries: Ve
         }
         None => println!("command '{}' not found", arg),
     };
+}
+
+fn get_entry_by_name(entry_name: &str, entries: Vec<MapEntry>) -> Option<MapEntry> {
+    for entry in entries {
+        if entry.name == entry_name {
+            return Some(entry);
+        }
+    }
+    return None;
 }
 
 fn read_config() -> Config {
@@ -352,17 +366,13 @@ fn ext(entry_name: &str, entries: &mut Vec<MapEntry>) {
                 "exec ".to_owned() + &cmdfilepath + " \"$@\""
             )
             .expect("unable to write");
-
-            Command::new("chmod")
-                .arg("777")
-                .arg(&extcmdpath)
-                .status()
-                .expect("failed to execute process");
+            std::fs::set_permissions(&extcmdpath, Permissions::from_mode(0o777));
         }
     }
     println!("[ext] exported command '{}.pxc'", entry_name);
 }
 
+// Removes a pxc command from the map file
 fn remove(args: &mut core::iter::Skip<crate::env::Args>, entries: &mut Vec<MapEntry>) {
     let entry_name;
 
@@ -386,13 +396,9 @@ fn remove(args: &mut core::iter::Skip<crate::env::Args>, entries: &mut Vec<MapEn
     }
 
     // remove command if exists.
-    let extpath = get_pxc_path() + "/cmd/" + &file_hash;
-
-    if Path::new(&extpath).exists() {
-        Command::new("rm")
-            .arg(&extpath)
-            .status()
-            .expect("failed to execute process");
+    let pxcpath = get_pxc_path() + "/cmd/" + &file_hash;
+    if Path::new(&pxcpath).exists() {
+        fs::remove_file(&pxcpath);
     }
 
     entries.remove(
@@ -404,12 +410,8 @@ fn remove(args: &mut core::iter::Skip<crate::env::Args>, entries: &mut Vec<MapEn
 
     // remove external command if exists.
     let extpath = get_ext_path() + &entry_name + ".pxc";
-
     if Path::new(&extpath).exists() {
-        Command::new("rm")
-            .arg(&extpath)
-            .status()
-            .expect("failed to execute process");
+        fs::remove_file(&extpath);
     }
 
     save_map(&entries);
@@ -417,6 +419,7 @@ fn remove(args: &mut core::iter::Skip<crate::env::Args>, entries: &mut Vec<MapEn
     println!("[rm] removed {}!", entry_name);
 }
 
+// Return <true> if the entry_name exists in the map file
 fn check_entry_exists(entry_name: &str, entries: &Vec<MapEntry>) -> bool {
     for entry in entries {
         if entry.name == entry_name {
@@ -424,15 +427,6 @@ fn check_entry_exists(entry_name: &str, entries: &Vec<MapEntry>) -> bool {
         }
     }
     return false;
-}
-
-fn get_entry_by_name(entry_name: &str, entries: Vec<MapEntry>) -> Option<MapEntry> {
-    for entry in entries {
-        if entry.name == entry_name {
-            return Some(entry);
-        }
-    }
-    return None;
 }
 
 fn add(mut new_entry: MapEntry, entries: &mut Vec<MapEntry>) {
@@ -444,16 +438,11 @@ fn add(mut new_entry: MapEntry, entries: &mut Vec<MapEntry>) {
         new_entry.category = "default".to_string();
     }
 
-    Command::new("touch")
-        .arg(get_pxc_path() + "/cmd/" + &new_entry.filehash)
-        .status()
-        .expect("failed to execute process");
-
-    Command::new("chmod")
-        .arg("777")
-        .arg(get_pxc_path() + "/cmd/" + &new_entry.filehash)
-        .status()
-        .expect("failed to execute process");
+    std::fs::File::create(get_pxc_path() + "/cmd/" + &new_entry.filehash);
+    std::fs::set_permissions(
+        get_pxc_path() + "/cmd/" + &new_entry.filehash,
+        Permissions::from_mode(0o777),
+    );
 
     entries.push(new_entry);
     save_map(entries);
