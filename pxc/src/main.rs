@@ -1,4 +1,6 @@
+extern crate ncurses;
 extern crate rand;
+use ncurses::*;
 use rand::Rng;
 use std::env;
 use std::fs;
@@ -6,9 +8,13 @@ use std::fs::File;
 use std::fs::Permissions;
 use std::io::{self, BufRead};
 use std::io::{BufWriter, Write};
+use std::ops::Deref;
 use std::os::unix::fs::PermissionsExt;
+use std::os::unix::process::CommandExt;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::ptr::null;
+use std::ptr::null_mut;
 
 #[derive(Clone)]
 struct MapEntry {
@@ -50,6 +56,22 @@ fn check_sequence_exists(sequence: &str, entries: &mut Vec<MapEntry>) -> bool {
     return false;
 }
 
+static WINDOW_HEIGHT: i32 = 3;
+static WINDOW_WIDTH: i32 = 10;
+
+fn create_win(start_y: i32, start_x: i32) -> WINDOW {
+    let win = newwin(WINDOW_HEIGHT, WINDOW_WIDTH, start_y, start_x);
+    box_(win, 0, 0);
+    wrefresh(win);
+    win
+}
+
+fn destroy_win(win: WINDOW) {
+    let ch = ' ' as chtype;
+    wborder(win, ch, ch, ch, ch, ch, ch, ch, ch);
+    wrefresh(win);
+    delwin(win);
+}
 fn main() {
     let mut entries: Vec<MapEntry> = read_map_file();
     let config = read_config();
@@ -161,6 +183,128 @@ fn main() {
             }
             "lsc" => {
                 list_categories(&entries);
+            }
+            "interactive" | "int" => {
+                /* Setup ncurses. */
+                initscr();
+                raw();
+
+                /* Allow for extended keyboard (like F1). */
+                keypad(stdscr(), true);
+                noecho();
+
+                /* Invisible cursor. */
+                curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE);
+
+                let mut search_word = "".to_string();
+
+                mvprintw(LINES() - 1, 0, "Press Escape to exit").unwrap();
+                refresh();
+
+                /* Get the screen bounds. */
+                let mut max_x = 0;
+                let mut max_y = 0;
+                getmaxyx(stdscr(), &mut max_y, &mut max_x);
+
+                let mut in_loop = true;
+
+                let mut key_e = 'e' as i32;
+
+                let mut last_max_y = 0;
+
+                while in_loop == true {
+                    let mut ch = getch();
+
+                    match ch {
+                        27 => { // escape
+                            in_loop = false;
+                        }
+                        263 => { // backspace
+                            let mut chars = search_word.chars();
+                            chars.next_back();
+                            search_word = chars.as_str().to_string();
+                            let mut search_word_display = "".to_string();
+                            search_word_display.push_str("search: '");
+                            search_word_display.push_str(&search_word.clone());
+                            search_word_display.push_str("'");
+                            mvprintw(2, 0, "                                                                  ").unwrap();
+
+                            mvprintw(2, 0, &search_word_display.as_str()).unwrap();
+
+                            let mut print_y = 3;
+
+                            for i in 3..last_max_y + 1 {
+                                mvprintw(i, 0, "                                                                  ").unwrap();
+                            }
+                            for entry in find_entries_containing(&entries, search_word.clone()) {
+                                print_y += 1;
+                                mvprintw(print_y, 0, "                                                                  ").unwrap();
+                                if print_y == 1 {
+                                    mvprintw(print_y, 0, &("-> ".to_owned() + &entry.as_str())).unwrap();
+                                } else {
+                                    mvprintw(print_y, 0, &entry.as_str()).unwrap();
+                                }
+                            }
+                            last_max_y = print_y;
+
+                        }
+                        10 => { //enter
+                            //endwin();
+                            //in_loop = false;
+                            // Run command if exact match
+
+
+                            let mut found_entries = find_entries_containing(&entries, search_word.clone());
+                            found_entries.sort_by(|a, b| a.len().cmp(&b.len()));
+
+
+                            run_cmd(
+                                found_entries
+                                    .get(0)
+                                    .unwrap(),
+                                &mut args,
+                                entries.clone(),
+                            );
+
+                            in_loop = false;
+
+                        }
+                        _ => {
+                            //search_word += ch.to_string().as_str();
+                            search_word += 
+                                std::char::from_u32(ch as u32).unwrap().to_string().as_str();
+
+                            let mut search_word_display = "".to_string();
+                            search_word_display.push_str("search: '");
+                            search_word_display.push_str(&search_word.clone());
+                            search_word_display.push_str("'");
+
+                            mvprintw(2, 0, &search_word_display.as_str()).unwrap();
+
+                            let mut print_y = 3;
+                            
+                            for i in 3..last_max_y + 1 {
+                                mvprintw(i, 0, "                                                                  ").unwrap();
+                            }
+
+                            let mut found_entries = find_entries_containing(&entries, search_word.clone());
+                            found_entries.sort_by(|a, b| a.len().cmp(&b.len()));
+
+                            for entry in found_entries {
+                                print_y += 1;
+                                mvprintw(print_y, 0, "                                                                  ").unwrap();
+                                if print_y == 1 {
+                                    mvprintw(print_y, 0, &("-> ".to_owned() + &entry.as_str())).unwrap();
+                                } else {
+                                    mvprintw(print_y, 0, &entry.as_str()).unwrap();
+                                }
+                            }
+                            last_max_y = print_y;
+                        }
+                    }
+                }
+
+                endwin();
             }
             _ => {
                 let cmd = arg;
@@ -354,7 +498,7 @@ fn ext(entry_name: &str, entries: &mut Vec<MapEntry>) {
 
     for entry in entries {
         if entry.name == entry_name {
-            let extcmdpath = get_ext_path() + entry_name + ".pxc";
+            let extcmdpath = get_ext_path() + entry_name + ".!";
             let cmdfilepath = get_pxc_path() + "/cmd/" + &entry.filehash;
 
             let file_buffer = File::create(&extcmdpath).expect("unable to create file");
@@ -369,7 +513,7 @@ fn ext(entry_name: &str, entries: &mut Vec<MapEntry>) {
             std::fs::set_permissions(&extcmdpath, Permissions::from_mode(0o777));
         }
     }
-    println!("[ext] exported command '{}.pxc'", entry_name);
+    println!("[ext] exported command '{}.!'", entry_name);
 }
 
 // Removes a pxc command from the map file
