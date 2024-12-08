@@ -6,8 +6,7 @@ use std::env;
 use std::fs;
 use std::fs::File;
 use std::fs::Permissions;
-use std::io::{self, BufRead};
-use std::io::{BufWriter, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::ops::Deref;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::process::CommandExt;
@@ -15,6 +14,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::ptr::null;
 use std::ptr::null_mut;
+
 
 #[derive(Clone)]
 struct MapEntry {
@@ -263,7 +263,7 @@ fn main() {
                                     .get(0)
                                     .unwrap(),
                                 &mut args,
-                                entries.clone(),
+                                &entries,
                             );
 
                             in_loop = false;
@@ -311,7 +311,7 @@ fn main() {
 
                 // Run command if exact match
                 if check_entry_exists(&cmd, &entries) {
-                    run_cmd(&cmd, &mut args, entries);
+                    run_cmd(&cmd, &mut args, &entries);
                     return;
                 }
 
@@ -350,11 +350,11 @@ fn main() {
                     Ok(i) => run_cmd(
                         &choice_entries.get(i as usize - 1).unwrap(),
                         &mut args,
-                        entries,
+                        &entries,
                     ),
                     Err(..) => {
                         if trimmed == "" && choice_entries.len() == 1 {
-                            run_cmd(&choice_entries.get(0).unwrap(), &mut args, entries)
+                            run_cmd(&choice_entries.get(0).unwrap(), &mut args, &entries)
                         } else {
                             println!("invalid option: {}", &trimmed);
                         }
@@ -376,30 +376,19 @@ fn find_entries_containing(mut entries: &Vec<MapEntry>, mut chars: String) -> Ve
         .collect();
 }
 
-fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>, entries: Vec<MapEntry>) {
-    match get_entry_by_name(&arg, entries) {
+fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>, entries: &[MapEntry]) {
+    match get_entry_by_name(arg, entries) {
         Some(ent) => {
             println!("running command '{}', filehash: {}", arg, ent.filehash);
-            let cmdpath = get_pxc_path().to_string() + "/cmd/" + &ent.filehash;
+            let cmdpath = format!("{}/cmd/{}", get_pxc_path(), ent.filehash);
 
-            let mut cmdargs = "".to_owned();
-
-            loop {
-                match args.next() {
-                    Some(carg) => {
-                        cmdargs.push_str(&carg.to_owned());
-                        cmdargs.push_str(" ");
-                    }
-                    None => {
-                        break;
-                    }
-                };
-            }
+            // Collect all arguments in a vector, and join them into a single string
+            let cmdargs = args.collect::<Vec<_>>().join(" ");
 
             println!("cargs: {}", cmdargs);
             Command::new("sh")
                 .arg("-c")
-                .arg(cmdpath + " " + &cmdargs)
+                .arg(format!("{} {}", cmdpath, cmdargs))
                 .status()
                 .expect("failed to execute process");
         }
@@ -407,83 +396,76 @@ fn run_cmd(arg: &str, args: &mut core::iter::Skip<crate::env::Args>, entries: Ve
     };
 }
 
-fn get_entry_by_name(entry_name: &str, entries: Vec<MapEntry>) -> Option<MapEntry> {
-    for entry in entries {
-        if entry.name == entry_name {
-            return Some(entry);
-        }
-    }
-    return None;
+fn get_entry_by_name<'a>(entry_name: &str, entries: &'a [MapEntry]) -> Option<&'a MapEntry> {
+    entries.iter().find(|entry| entry.name == entry_name)
 }
 
 fn read_config() -> Config {
     let pxcpath = get_pxc_path();
-    let config_path: String = pxcpath.to_owned() + "/config";
-    let config_filepath: String = pxcpath.to_owned() + "/config/config";
+    let config_path = format!("{}/config", pxcpath);
+    let config_filepath = format!("{}/config/config", pxcpath);
 
-    //default config values here
-    let mut config: Config = Config {
+    // Default config values
+    let mut config = Config {
         editor: "vim".to_string(),
     };
 
-    let mut editor_exists = false;
+    // Check if config directory exists, if not, create it
+    if !Path::new(&config_path).exists() {
+        if let Err(e) = fs::create_dir_all(&config_path) {
+            println!("Error when creating dir: {}", e);
+        }
+    }
 
-    if Path::new(&config_path).exists() {
-        if let Ok(map_lines) = read_lines(&config_filepath) {
-            for line in map_lines.flatten() {
-                let parts = line.split(";").collect::<Vec<_>>();
-                match parts[0] {
+    // Read the config file if it exists
+    if let Ok(map_lines) = read_lines(&config_filepath) {
+        for line in map_lines.flatten() {
+            if let Some((key, value)) = line.split_once(';') {
+                match key {
                     "editor" => {
-                        config.editor = parts[1].to_string();
-                        editor_exists = true;
+                        config.editor = value.to_string();
                     }
                     _ => {}
                 }
             }
         }
-    } else {
-        // config directory: stores config files
-        match fs::create_dir_all(pxcpath.to_owned() + "/config/") {
-            Ok(()) => {}
-            Err(dir) => {
-                println!("error when creating dir {}", dir)
-            }
+    }
+
+    // Write the editor value to the config file if it has been modified
+    if !config.editor.is_empty() {
+        if let Err(e) = File::create(&config_filepath).and_then(|mut file| {
+            write!(file, "editor;{}\n", config.editor)
+        }) {
+            println!("Unable to write to config file: {}", e);
         }
     }
 
-    if editor_exists {
-        // only write, when a config is missing. add && for future config entries
-        let mut file_buffer = File::create(&config_filepath).expect("unable to create file");
-        write!(file_buffer, "{}\n", "editor;".to_owned() + &config.editor)
-            .expect("unable to write");
-    }
-    return config;
+    config
 }
 
 fn read_map_file() -> Vec<MapEntry> {
-    let mut result: Vec<MapEntry> = Vec::new();
-    let map_file = get_pxc_path() + "/map/pxc";
+    let map_file = format!("{}/map/pxc", get_pxc_path());
 
-    if let Ok(map_lines) = read_lines(map_file) {
-        for line in map_lines.flatten() {
-            let parts = line.split(";").collect::<Vec<_>>();
-            result.push(MapEntry {
-                name: parts[0].to_string(),
-                category: parts[1].to_string(),
-                filehash: parts[2].to_string(),
-            });
-        }
-    } else {
-        println!("pxc not initialized!");
-        match init() {
-            Ok(_) => {}
-            Err(e) => {
-                println!("Could not initialize!: {}", e)
+    // Try reading the file and processing the lines
+    match read_lines(map_file) {
+        Ok(map_lines) => {
+            let mut result = Vec::new();
+            for line in map_lines.flatten() {
+                let parts = line.split(';').collect::<Vec<_>>();
+                result.push(MapEntry {
+                    name: parts[0].to_string(),
+                    category: parts[1].to_string(),
+                    filehash: parts[2].to_string(),
+                });
             }
+            result
+        }
+        Err(_) => {
+            // In case of an error, return an empty Vec instead of returning a wrong type
+            println!("Error reading map file.");
+            Vec::new()
         }
     }
-
-    return result;
 }
 
 fn ext(entry_name: &str, entries: &mut Vec<MapEntry>) {
@@ -655,7 +637,7 @@ fn edit(config: &Config, entry_name: &str, mut entries: Vec<MapEntry>, category_
             }
 
             println!(
-                "[edit] editing command '{}', filehash: {}",
+                "[edit] editing command '{}', file: {}",
                 entry_name, entry.filehash
             );
             let cmdpath = get_pxc_path().to_string() + "/cmd/" + &entry.filehash;
@@ -726,12 +708,13 @@ fn list(entries: &Vec<MapEntry>, category_name: &str) {
     }
 }
 
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+fn read_lines<P>(filename: P) -> io::Result<std::io::Lines<BufReader<File>>> 
 where
-    P: AsRef<Path>,
+    P: AsRef<std::path::Path>,
 {
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
+    let file = File::open(filename)?;  // Open the file
+    let reader = BufReader::new(file);  // Create a BufReader from the file
+    Ok(reader.lines())  // Return the Lines iterator
 }
 
 fn init() -> std::io::Result<()> {
