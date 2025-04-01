@@ -30,12 +30,15 @@ struct Config {
 
 fn help() {
     println!("pxc help:");
-    println!("list            -> ls [category]");
-    println!("list categories -> lsc");
-    println!("edit entry      -> edit [name] [category]");
-    println!("add entry       -> add [name]");
-    println!("export command  -> ext [name]");
-    println!("remove entry    -> rm [name]");
+    println!("");
+    println!("lsc                    -> List all categories.");
+    println!("(ls | list)            -> List all commands.");
+    println!("(ls | list) <name>     -> List all commands in category <name>.");
+    println!("edit <name>            -> Edit the command <name>.");
+    println!("add <name>             -> Add a new command with the name <name>.");
+    println!("print <name>           -> Print the content of the command <name>.");
+    println!("ext | external         -> Export the command <name>.");
+    println!("rm | remove            -> Remove the command <name>.");
 }
 
 fn gen_char_sequence() -> String {
@@ -64,7 +67,7 @@ fn main() {
 
     if let Some(arg) = args.next() {
         match &arg[..] {
-            "h" => help(),
+            "h" | "help" | "--help" => help(),
             "print" => {
                 let entry_name: String;
                 if let Some(arg1) = args.next() {
