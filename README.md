@@ -14,11 +14,11 @@ To build the project in release mode, use the following command:
 cargo build --release
 ```
 
-# Supported Platforms
+## Supported Platforms
 
 `Linux`
 
-# How to use
+## How to use
 
 ```
 lsc                    -> List all categories.
@@ -31,7 +31,7 @@ ext | external         -> Export the command <name>.
 rm | remove            -> Remove the command <name>.
 ```
 
-# Directory structure
+## Directory structure
 
 ```
 .pxc/
@@ -46,6 +46,6 @@ rm | remove            -> Remove the command <name>.
 └── map/                # Mapping information.
 ```
 
-# License
+## License
 
 This project is licensed under the GPLv3 License.
